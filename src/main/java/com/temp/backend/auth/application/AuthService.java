@@ -4,6 +4,8 @@ import com.temp.backend.auth.dto.AuthenticationRequest;
 import com.temp.backend.auth.dto.RegisterRequest;
 import com.temp.backend.domain.user.entity.User;
 import com.temp.backend.domain.user.repository.UserRepository;
+import com.temp.backend.global.code.ErrorCode;
+import com.temp.backend.global.exception.MemberAlreadyExistsException;
 import com.temp.backend.global.jwt.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -21,6 +23,9 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
 
     public String register(RegisterRequest request) {
+        userRepository.findByEmail(request.getEmail()).ifPresent(user -> {
+            throw new MemberAlreadyExistsException(ErrorCode.MEMBER_ALREADY_EXIST);
+        });
         User user = User.create(
                 request.getFirstname(),
                 request.getLastname(),
