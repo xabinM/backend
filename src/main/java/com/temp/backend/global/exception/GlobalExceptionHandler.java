@@ -17,6 +17,13 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, ex.getErrorCode().getStatus());
     }
 
+    @ExceptionHandler(JwtKeyLoadException.class)
+    public ResponseEntity<ErrorResponse> handleJwtKeyLoadException(JwtKeyLoadException ex) {
+        ErrorResponse response = new ErrorResponse(ex.getErrorCode());
+        ex.printStackTrace();
+        return new ResponseEntity<>(response, ex.getErrorCode().getStatus());
+    }
+
     @ExceptionHandler({UsernameNotFoundException.class, BadCredentialsException.class})
     public ResponseEntity<ErrorResponse> handleAuthenticationException(Exception ex) {
         ErrorResponse response = new ErrorResponse(ErrorCode.MEMBER_NOT_FOUND);
