@@ -1,8 +1,14 @@
 package com.temp.backend.global.jwt;
 
+import com.nimbusds.jose.JOSEException;
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JWSHeader;
+import com.nimbusds.jose.JWSSigner;
+import com.nimbusds.jose.crypto.RSASSASigner;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
 import com.temp.backend.global.code.ErrorCode;
 import com.temp.backend.global.exception.JwtKeyLoadException;
-import io.jsonwebtoken.Jwts;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -11,6 +17,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.KeyFactory;
 import java.security.PrivateKey;
+import java.security.interfaces.RSAPrivateKey;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.Base64;
 import java.util.Date;
@@ -32,13 +39,34 @@ public class JwtUtil {
     }
 
     private String createToken(Map<String, Object> claims, String username) {
-        return Jwts.builder()
-                .claims(claims)
-                .subject(username)
-                .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + expirationTime))
-                .signWith(getPrivateKey(), Jwts.SIG.RS256)
-                .compact();
+        try {
+            RSAPrivateKey privateKey = (RSAPrivateKey) getPrivateKey();
+            JWSSigner signer = new RSASSASigner(privateKey);
+
+            Date now = new Date();
+            Date expiration = new Date(now.getTime() + expirationTime);
+
+            JWTClaimsSet.Builder claimsSetBuilder = new JWTClaimsSet.Builder()
+                    .subject(username)
+                    .issueTime(now)
+                    .expirationTime(expiration);
+
+            // 추가 클레임 설정
+            for (Map.Entry<String, Object> entry : claims.entrySet()) {
+                claimsSetBuilder.claim(entry.getKey(), entry.getValue());
+            }
+
+            SignedJWT signedJWT = new SignedJWT(
+                    new JWSHeader(JWSAlgorithm.RS256),
+                    claimsSetBuilder.build()
+            );
+
+            signedJWT.sign(signer);
+
+            return signedJWT.serialize();
+        } catch (JOSEException e) {
+            throw new RuntimeException("JWT 서명 실패", e);
+        }
     }
 
     private PrivateKey getPrivateKey() {
